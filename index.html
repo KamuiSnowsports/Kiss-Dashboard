@@ -2274,7 +2274,7 @@ function renderPriorityList() {
       ondrop="onDrop(event,${inst.id})"
       ondragend="onDragEnd(event)">
       <div style="font-size:14px;color:var(--muted);cursor:grab;flex-shrink:0">\u283F</div>
-      <div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;background:${levelColor(inst)};color:#fff">${idx+1}</div>
+      <div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;background:${priorityColor(idx)};color:#fff">${idx+1}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:12px;font-weight:700">${inst.name}</div>
         <div style="font-size:10px;color:var(--muted)">${inst.level}</div>
@@ -2286,18 +2286,10 @@ function renderPriorityList() {
     </div>`).join('');
 }
 
-function levelColor(inst) {
-  // Parse the leading number from level strings like "1- SKI", "2- SKI", "3.5- SKI/SB"
-  const lv = inst.level || '';
-  const m = lv.match(/^(\d+(?:\.\d+)?)/);
-  const n = m ? parseFloat(m[1]) : null;
-  if (n === null) return '#7888a8';  // no number (e.g. SNOWBOARD-only)
-  if (n <= 1)   return '#c9a96e';   // L1 ‚Äî gold
-  if (n <= 2)   return '#9b78e8';   // L2 ‚Äî purple
-  if (n <= 3)   return '#3b7dd8';   // L3 ‚Äî blue
-  if (n <= 3.5) return '#259c6b';   // L3.5 ‚Äî green
-  if (n <= 4)   return '#e0884a';   // L4 ‚Äî orange
-  return '#7888a8';                  // L5+ ‚Äî slate
+function priorityColor(idx) {
+  if (idx === 0) return '#c9a96e';  // #1 ‚Äî yellow/gold
+  if (idx === 1) return '#9b78e8';  // #2 ‚Äî purple
+  return '#4dc78a';                  // everyone else ‚Äî green
 }
 
 function updatePriorityNote(id, note) {
