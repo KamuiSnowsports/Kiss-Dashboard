@@ -847,7 +847,7 @@ function renderDashboard() {
   document.getElementById('dash-chart-title').textContent=`Daily Revenue \u2014 ${month}`;
 
   // Metrics
-  const guestTotal = guests.total;
+  const guestTotal = Object.values(dailyGuestLog).reduce(function(s,v){return s+(typeof v==='object'?(v.ski||0)+(v.sb||0)+(v.other||0):(v||0));},0);
   const latestKey = Object.keys(rev.daily).sort().pop() || null;
   const latestRev = latestKey ? (rev.daily[latestKey] || 0) : 0;
   const latestLabel = latestKey ? (function(){
@@ -870,8 +870,8 @@ function renderDashboard() {
   mh += '<div class="value" style="color:var(--red)">'+(totalRefund>0?fmt(totalRefund):'\u2014')+'</div></div>';
   mh += '<div class="metric" style="border-color:rgba(184,146,74,.25)">';
   mh += '<div class="label">Guests</div>';
-  mh += '<div class="value" style="color:var(--gold)">'+guests.total+'</div>';
-  mh += '<div style="font-size:9px;color:var(--muted);margin-top:2px">from CSV \u00B7 edit in Daily Report</div></div>';
+  mh += '<div class="value" style="color:var(--gold)">'+(guestTotal||'\u2014')+'</div>';
+  mh += '<div style="font-size:9px;color:var(--muted);margin-top:2px">from Daily Report</div></div>';
   mh += '<div class="metric">';
   mh += '<div class="label">Ski / Snowboard</div>';
   mh += '<div class="value">'+skiPct2+'% / '+sbPct2+'%</div>';
