@@ -176,6 +176,15 @@ pre{font-family:'SF Mono','Fira Code','Cascadia Code',monospace;font-size:11px;l
 
   <!-- &#9552;&#9552; UPLOAD &#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552; -->
   <div id="panel-upload" class="panel active">
+    <div class="card" style="max-width:560px;margin-bottom:20px;border-color:rgba(184,146,74,.35)">
+      <h2 style="font-size:16px;font-weight:800;margin-bottom:6px">&#128279; Sync from Acuity</h2>
+      <p style="font-size:11px;color:var(--muted);line-height:1.8;margin-bottom:16px">
+        Fetch all appointments for the selected month directly from Acuity &#8212; no CSV download needed.<br>
+        <b style="color:var(--snow)">Make sure the correct month is set in the header first.</b>
+      </p>
+      <button class="btn-primary" id="btn-sync-acuity" onclick="syncFromAcuity()" style="width:100%;padding:12px 0;font-size:14px;background:linear-gradient(135deg,#b8924a,#7a5c28)">&#8635; Sync from Acuity</button>
+      <div id="sync-status" style="display:none;margin-top:10px;font-size:12px;text-align:center;padding:8px;border-radius:8px"></div>
+    </div>
     <div class="card" style="max-width:560px;margin-bottom:20px">
       <h2 style="font-size:16px;font-weight:800;margin-bottom:6px">Daily Import</h2>
       <p style="font-size:11px;color:var(--muted);line-height:1.8;margin-bottom:16px">
@@ -3403,6 +3412,100 @@ function exportGuestLogCSV() {
 }
 
 // \u2500\u2500\u2500 PASSWORD PROTECTION \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+
+// ‚îÄ‚îÄ Acuity Sync ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ‚îÄ
+async function syncFromAcuity() {
+  const btn    = document.getElementById('btn-sync-acuity');
+  const status = document.getElementById('sync-status');
+  const month  = document.getElementById('inp-month').value;
+
+  btn.textContent = '\u23F3 Syncing\u2026';
+  btn.disabled = true;
+  status.style.display = 'block';
+  status.style.background = '#f4f7fd';
+  status.style.color = 'var(--muted)';
+  status.textContent = 'Connecting to Acuity\u2026';
+
+  try {
+    const res = await fetch('/.netlify/functions/acuity?month=' + encodeURIComponent(month));
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
+
+    const fetched = data; // array of CSV-format row objects
+
+    if (!fetched.length) {
+      status.style.background = '#fff8e1';
+      status.style.color = '#b8924a';
+      status.textContent = '\u26A0 No appointments found for ' + month;
+      btn.textContent = '\u8635 Sync from Acuity';
+      btn.disabled = false;
+      return;
+    }
+
+    // If the fetched data is from a different month than existing rows, clear first
+    var fetchedMonth = (fetched[0]['Start Time'] || '').substring(0, 7);
+    var existingMonth = rawRows.length ? (rawRows[0]['Start Time'] || '').substring(0, 7) : '';
+    if (existingMonth && fetchedMonth && existingMonth !== fetchedMonth) {
+      rawRows = []; importLog = []; adjustments = [];
+    }
+
+    // Build a map of fetched rows by ID for fast lookup (update changed records)
+    var fetchedMap = {};
+    fetched.forEach(function(r) { if (r['Appointment ID']) fetchedMap[r['Appointment ID']] = r; });
+
+    // Update existing rows that have changed
+    rawRows = rawRows.map(function(r) { return fetchedMap[r['Appointment ID']] || r; });
+
+    // Add truly new rows (IDs not already in rawRows)
+    var existingIds = new Set(rawRows.map(function(r) { return (r['Appointment ID'] || '').trim(); }).filter(Boolean));
+    var added = fetched.filter(function(r) {
+      var id = (r['Appointment ID'] || '').trim();
+      if (!id || existingIds.has(id)) return false;
+      existingIds.add(id); return true;
+    });
+    rawRows = rawRows.concat(added);
+
+    // Log the sync
+    var now = new Date();
+    importLog.push({
+      filename: '\u21BB Acuity Sync \u2014 ' + month,
+      importedAt: now.toLocaleString('en-GB', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}),
+      newRows: added.length,
+      skipped: fetched.length - added.length,
+      totalAfter: rawRows.length
+    });
+
+    // Reprocess & render everything
+    result = processData(rawRows);
+    renderImportLog();
+    renderPriorityList();
+    renderDashboard();
+    renderPayroll();
+    renderCancellations();
+    renderEmail();
+    renderDailyReport();
+    document.getElementById('btn-export-toggle').style.display = '';
+    document.getElementById('btn-reprocess-payroll').style.display = '';
+    saveToFirebase();
+
+    status.style.background = '#edfaf4';
+    status.style.color = 'var(--green)';
+    status.textContent = '\u2713 Synced ' + fetched.length + ' appointments (' + added.length + ' new, ' + (fetched.length - added.length) + ' updated) \u00B7 ' + rawRows.length + ' total';
+    btn.textContent = '\u2713 Done!';
+    setTimeout(function() {
+      btn.textContent = '\u21BB Sync from Acuity';
+      btn.disabled = false;
+      switchTab('dashboard');
+    }, 2000);
+
+  } catch (e) {
+    status.style.background = '#fdecea';
+    status.style.color = 'var(--red)';
+    status.textContent = '\u2717 Sync failed: ' + e.message;
+    btn.textContent = '\u21BB Sync from Acuity';
+    btn.disabled = false;
+  }
+}
 
 const SITE_PASS = 'Kamu1Ski';
 const PAYROLL_PASS = 'Kamu1Ski2026';
