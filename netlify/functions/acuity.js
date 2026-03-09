@@ -1,4 +1,4 @@
-// Netlify serverless function ‚Äî proxies Acuity Scheduling API
+// Netlify serverless function — proxies Acuity Scheduling API
 // Credentials stored as Netlify env vars: ACUITY_USER_ID, ACUITY_API_KEY
 
 exports.handler = async function(event) {
@@ -12,13 +12,26 @@ exports.handler = async function(event) {
     };
   }
 
-  const monthStr = (event.queryStringParameters || {}).month || '';
-  const range = parseMonth(monthStr);
-  if (!range) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: 'Invalid month parameter: "' + monthStr + '". Expected format: "March 2026"' })
-    };
+  const params = event.queryStringParameters || {};
+  let range;
+
+  if (params.date) {
+    // Single day: ?date=2026-03-09
+    range = { min: params.date, max: params.date };
+  } else if (params.month) {
+    // Full month: ?month=March+2026 (kept for backward compat)
+    range = parseMonth(params.month);
+    if (!range) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: 'Invalid month parameter: "' + params.month + '". Expected format: "March 2026"' })
+      };
+    }
+  } else {
+    // Default: today
+    var today = new Date();
+    var d = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+    range = { min: d, max: d };
   }
 
   const auth = Buffer.from(userId + ':' + apiKey).toString('base64');
@@ -27,7 +40,6 @@ exports.handler = async function(event) {
   const pageSize = 500;
 
   try {
-    // Paginate through all appointments for the month (including cancelled)
     while (true) {
       const url = 'https://acuityscheduling.com/api/v1/appointments'
         + '?minDate=' + range.min
@@ -55,7 +67,6 @@ exports.handler = async function(event) {
       offset += pageSize;
     }
 
-    // Transform Acuity API objects into the CSV row format the dashboard expects
     const rows = allAppts.map(function(a) {
       return {
         'Appointment ID': String(a.id || ''),
@@ -75,7 +86,10 @@ exports.handler = async function(event) {
 
     return {
       statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
+      },
       body: JSON.stringify(rows)
     };
 
@@ -87,7 +101,6 @@ exports.handler = async function(event) {
   }
 };
 
-// Parse "March 2026" ‚Üí { min: "2026-03-01", max: "2026-03-31" }
 function parseMonth(str) {
   if (!str) return null;
   var months = ['january','february','march','april','may','june','july','august','september','october','november','december'];
@@ -104,7 +117,6 @@ function parseMonth(str) {
   };
 }
 
-// Convert ISO datetime "2026-03-09T10:00:00-0700" ‚Üí "2026-03-09 10:00"
 function fmtDate(iso) {
   if (!iso) return '';
   var m = String(iso).match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/);
