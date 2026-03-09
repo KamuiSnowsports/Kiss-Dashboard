@@ -89,6 +89,16 @@ tr:hover td{background:#f4f7fd}
 .export-overlay{position:fixed;inset:0;z-index:99}
 /* &#9472;&#9472; Code / Pre &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472; */
 pre{font-family:'SF Mono','Fira Code','Cascadia Code',monospace;font-size:11px;line-height:1.8;color:var(--snow);white-space:pre-wrap;background:#f4f7fd;padding:20px;border-radius:10px;border:1px solid var(--border);max-height:520px;overflow-y:auto}
+/* &#9472;&#9472; Responsive / Mobile &#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472; */
+@media(max-width:600px){
+  #app-header{padding:10px 14px !important;gap:10px !important}
+  #app-header>div:first-child{width:32px !important;height:32px !important;font-size:14px !important;border-radius:8px !important}
+  #app-header>div:nth-child(2)>div:first-child{font-size:14px !important}
+  #app-header>div:nth-child(2)>div:last-child{display:none !important}
+  #app-header>div:nth-child(3)>span:first-child{display:none !important}
+  #inp-month{width:108px !important;font-size:12px !important;padding:5px 8px !important}
+  #btn-export-toggle{font-size:11px !important;padding:5px 10px !important}
+}
 </style>
 </head>
 <body>
@@ -106,7 +116,7 @@ pre{font-family:'SF Mono','Fira Code','Cascadia Code',monospace;font-size:11px;l
 </div>
 
 <!-- HEADER -->
-<div style="padding:18px 36px;border-bottom:2px solid var(--border);display:flex;align-items:center;gap:16px;background:#ffffff;box-shadow:0 2px 16px rgba(30,45,90,.07);position:sticky;top:0;z-index:50">
+<div id="app-header" style="padding:18px 36px;border-bottom:2px solid var(--border);display:flex;align-items:center;gap:16px;background:#ffffff;box-shadow:0 2px 16px rgba(30,45,90,.07);position:sticky;top:0;z-index:50">
   <div style="width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,#b8924a,#7a5c28);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;color:#fff;flex-shrink:0;box-shadow:0 2px 10px rgba(184,146,74,.35)">K</div>
   <div>
     <div style="font-size:18px;font-weight:800;color:var(--snow);font-family:Syne,sans-serif">KISS Operations</div>
