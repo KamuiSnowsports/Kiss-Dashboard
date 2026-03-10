@@ -685,6 +685,10 @@ function mergeOrigin(raw) {
 // \u2500\u2500\u2500 CORE PROCESSING \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
 function processData(rows) {
+  // Never show future appointments — only today and past
+  var todayEnd = new Date(); todayEnd.setHours(23,59,59,999);
+  rows = rows.filter(function(r) { var d = parseAcuityDate(r['Start Time']); return !d || d <= todayEnd; });
+
   const instMap={};
   instructors.forEach(i=>{instMap[i.name.toLowerCase()]=i;});
 
@@ -3427,7 +3431,9 @@ async function syncFromAcuity() {
   status.textContent = 'Connecting to Acuity\u2026';
 
   try {
-    const res = await fetch('/.netlify/functions/acuity?month=' + encodeURIComponent(month));
+    const today = new Date();
+    const dateStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+    const res = await fetch('/.netlify/functions/acuity?date=' + dateStr);
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
 
@@ -3436,42 +3442,28 @@ async function syncFromAcuity() {
     if (!fetched.length) {
       status.style.background = '#fff8e1';
       status.style.color = '#b8924a';
-      status.textContent = '\u26A0 No appointments found for ' + month;
-      btn.textContent = '\u8635 Sync from Acuity';
+      status.textContent = '\u26A0 No appointments found for today';
+      btn.textContent = '\u8635 Sync Today from Acuity';
       btn.disabled = false;
       return;
     }
 
-    // If the fetched data is from a different month than existing rows, clear first
-    var fetchedMonth = (fetched[0]['Start Time'] || '').substring(0, 7);
-    var existingMonth = rawRows.length ? (rawRows[0]['Start Time'] || '').substring(0, 7) : '';
-    if (existingMonth && fetchedMonth && existingMonth !== fetchedMonth) {
-      rawRows = []; importLog = []; adjustments = [];
-    }
-
-    // Build a map of fetched rows by ID for fast lookup (update changed records)
-    var fetchedMap = {};
-    fetched.forEach(function(r) { if (r['Appointment ID']) fetchedMap[r['Appointment ID']] = r; });
-
-    // Update existing rows that have changed
-    rawRows = rawRows.map(function(r) { return fetchedMap[r['Appointment ID']] || r; });
-
-    // Add truly new rows (IDs not already in rawRows)
-    var existingIds = new Set(rawRows.map(function(r) { return (r['Appointment ID'] || '').trim(); }).filter(Boolean));
-    var added = fetched.filter(function(r) {
-      var id = (r['Appointment ID'] || '').trim();
-      if (!id || existingIds.has(id)) return false;
-      existingIds.add(id); return true;
+    // Replace today's rows with fresh Acuity data, keep all other days
+    rawRows = rawRows.filter(function(r) {
+      var d = parseAcuityDate(r['Start Time']);
+      if (!d) return true;
+      var k = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      return k !== dateStr;
     });
-    rawRows = rawRows.concat(added);
+    rawRows = rawRows.concat(fetched);
 
     // Log the sync
     var now = new Date();
     importLog.push({
-      filename: '\u21BB Acuity Sync \u2014 ' + month,
+      filename: '\u21BB Acuity Sync \u2014 ' + dateStr,
       importedAt: now.toLocaleString('en-GB', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}),
-      newRows: added.length,
-      skipped: fetched.length - added.length,
+      newRows: fetched.length,
+      skipped: 0,
       totalAfter: rawRows.length
     });
 
@@ -3490,10 +3482,10 @@ async function syncFromAcuity() {
 
     status.style.background = '#edfaf4';
     status.style.color = 'var(--green)';
-    status.textContent = '\u2713 Synced ' + fetched.length + ' appointments (' + added.length + ' new, ' + (fetched.length - added.length) + ' updated) \u00B7 ' + rawRows.length + ' total';
+    status.textContent = '\u2713 Synced ' + fetched.length + ' appointment' + (fetched.length===1?'':'s') + ' for today';
     btn.textContent = '\u2713 Done!';
     setTimeout(function() {
-      btn.textContent = '\u21BB Sync from Acuity';
+      btn.textContent = '\u21BB Sync Today from Acuity';
       btn.disabled = false;
       switchTab('dashboard');
     }, 2000);
