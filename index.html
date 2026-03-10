@@ -1005,7 +1005,7 @@ function renderLessonsLog() {
     if(!seenIds.has(id)) seenIds.set(id,r);
   });
 
-  const allSessions=[...seenIds.values()].map(r=>{
+  let allSessions=[...seenIds.values()].map(r=>{
     const apptId=(r['Appointment ID']||'').trim();
     const cal=(r['Calendar']||'').trim();
     const instName=extractName(cal);
