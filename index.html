@@ -1020,6 +1020,10 @@ function renderLessonsLog() {
     return{apptId,instName:inst.name,type,date:r['Start Time'],dateObj:d,hrs,payType,isRequest,guest};
   }).filter(Boolean);
 
+  // Only show current month up to today — no future dates
+  var _now=new Date(), _todayEnd=new Date(_now.getFullYear(),_now.getMonth(),_now.getDate(),23,59,59,999), _monthStart=new Date(_now.getFullYear(),_now.getMonth(),1);
+  allSessions=allSessions.filter(function(s){return !s.dateObj||(s.dateObj>=_monthStart&&s.dateObj<=_todayEnd);});
+
   const filtered=allSessions.filter(s=>{
     if(s.payType==='Admin Unpaid')return false;
     if(fInst&&!s.instName.toLowerCase().includes(fInst))return false;
