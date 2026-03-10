@@ -44,38 +44,47 @@ exports.handler = async function(event) {
   }
 
   const auth = Buffer.from(userId + ':' + apiKey).toString('base64');
-  let allAppts = [];
-  let offset = 0;
   const pageSize = 500;
 
-  try {
-    // Paginate through all appointments for the date range (including cancelled)
+  // Fetch all pages from Acuity for a given URL base
+  async function fetchAll(baseUrl) {
+    var results = [];
+    var offset = 0;
     while (true) {
-      const url = 'https://acuityscheduling.com/api/v1/appointments'
-        + '?minDate=' + range.min
-        + '&maxDate=' + range.max
-        + '&max=' + pageSize
-        + '&offset=' + offset
-        + '&canceled=true';
-
-      const res = await fetch(url, {
+      var url = baseUrl + '&max=' + pageSize + '&offset=' + offset;
+      var res = await fetch(url, {
         headers: { 'Authorization': 'Basic ' + auth }
       });
-
       if (!res.ok) {
-        const text = await res.text();
-        return { statusCode: res.status, body: JSON.stringify({ error: 'Acuity API error: ' + text }) };
+        var text = await res.text();
+        throw new Error('Acuity API error (' + res.status + '): ' + text);
       }
-
-      const page = await res.json();
+      var page = await res.json();
       if (!Array.isArray(page)) {
-        return { statusCode: 500, body: JSON.stringify({ error: 'Unexpected Acuity response: ' + JSON.stringify(page) }) };
+        throw new Error('Unexpected Acuity response: ' + JSON.stringify(page));
       }
-
-      allAppts = allAppts.concat(page);
+      results = results.concat(page);
       if (page.length < pageSize) break;
       offset += pageSize;
     }
+    return results;
+  }
+
+  var baseUrl = 'https://acuityscheduling.com/api/v1/appointments'
+    + '?minDate=' + range.min
+    + '&maxDate=' + range.max;
+
+  try {
+    // Fetch active and cancelled appointments separately, then merge.
+    // NOTE: canceled=true returns ONLY cancelled appointments (not "include cancelled").
+    var active    = await fetchAll(baseUrl);
+    var cancelled = await fetchAll(baseUrl + '&canceled=true');
+
+    // Merge by ID, cancelled entries take priority (they have canceledAt populated)
+    var byId = {};
+    active.forEach(function(a) { byId[a.id] = a; });
+    cancelled.forEach(function(a) { byId[a.id] = a; });
+    var allAppts = Object.values(byId);
 
     // When filtering to a specific date, keep only appointments on that date in SCHOOL_TZ
     if (filterDate) {
