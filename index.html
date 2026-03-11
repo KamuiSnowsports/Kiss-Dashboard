@@ -2614,8 +2614,9 @@ function renderRevenueReport() {
 
   // Build daily breakdown
   const dailyMap = {};
+  const _dailyTodayEnd=new Date(); _dailyTodayEnd.setHours(23,59,59,999);
   rawRows.filter(r=>!isKISSops(r)).forEach(r=>{
-    const d=parseAcuityDate(r['Start Time']); if(!d) return;
+    const d=parseAcuityDate(r['Start Time']); if(!d||d>_dailyTodayEnd) return;
     const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     if(!dailyMap[k]) dailyMap[k]={gross:0};
     const cancelled=isCancelled(r)||(r['Calendar']||'').trim()==='CANCELLED APPOINTMENTS';
