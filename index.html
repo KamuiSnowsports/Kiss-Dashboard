@@ -2162,7 +2162,7 @@ async function loadFromFirebase() {
       document.getElementById('btn-reprocess-payroll').style.display = '';
     }
     renderImportLog();
-    renderOriginTable();
+    renderOrigin();
     renderSettings();
     console.log('\u2705 Loaded from Firebase');
   } catch(e) { console.warn('Firebase load failed:', e); }
